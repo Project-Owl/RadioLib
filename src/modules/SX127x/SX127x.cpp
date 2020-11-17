@@ -480,28 +480,25 @@ int16_t SX127x::startTransmit(uint8_t* data, size_t len, uint8_t addr) {
 int16_t SX127x::readData(uint8_t* data, size_t len) {
   int16_t modem = getActiveModem();
   size_t length = len;
-
   // put module to standby
   standby();
-
   if(modem == SX127X_LORA) {
     // len set to maximum indicates unknown packet length, read the number of actually received bytes
     if(len == SX127X_MAX_PACKET_LENGTH) {
       length = getPacketLength();
     }
-
     // check integrity CRC
-    if(_mod->SPIgetRegValue(SX127X_REG_IRQ_FLAGS, 5, 5) == SX127X_CLEAR_IRQ_FLAG_PAYLOAD_CRC_ERROR) {
+    int16_t regValue = _mod->SPIgetRegValue(SX127X_REG_IRQ_FLAGS, 5, 5);
+    int16_t crcOnPayload = _mod->SPIgetRegValue(SX127X_REG_HOP_CHANNEL, 6, 6);
+    if (regValue == SX127X_CLEAR_IRQ_FLAG_PAYLOAD_CRC_ERROR ||
+        crcOnPayload == 0) {
       // clear interrupt flags
       clearIRQFlags();
-
-      return(ERR_CRC_MISMATCH);
+      return (ERR_CRC_MISMATCH);
     }
-
   } else if(modem == SX127X_FSK_OOK) {
     // read packet length (always required in FSK)
     length = getPacketLength();
-
     // check address filtering
     uint8_t filter = _mod->SPIgetRegValue(SX127X_REG_PACKET_CONFIG_1, 2, 1);
     if((filter == SX127X_ADDRESS_FILTERING_NODE) || (filter == SX127X_ADDRESS_FILTERING_NODE_BROADCAST)) {
